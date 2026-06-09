@@ -40,28 +40,38 @@
     <p class="foot">Atualiza sozinho a cada 15s · <span id="ts">—</span></p>
   </div>
 <script>
-  const APP = "https://crushing-tavern-clasp.ngrok-free.dev";
+  // A URL do tunel muda a cada reinicio do PC; o PC publica a URL atual em url.json.
+  // Esta pagina le url.json e checa /health -> os editores so usam ESTE link, sempre.
+  const URL_JSON = "https://raw.githubusercontent.com/MCDPLAYER/mcd-editores-status/main/url.json";
   const state = document.getElementById("state");
   const msg = document.getElementById("msg");
   const hint = document.getElementById("hint");
   const enter = document.getElementById("enter");
   const ts = document.getElementById("ts");
-  enter.href = APP;
+
+  function offline() {
+    state.className = "state offline";
+    msg.textContent = "🔴 Fora do ar";
+    enter.style.display = "none";
+    hint.textContent = "O PC do MCD está desligado. Manda mensagem pra ele que ele liga e já volta. 😉";
+  }
 
   async function check() {
     try {
-      const r = await fetch(APP + "/health", { headers: { "ngrok-skip-browser-warning": "1" }, cache: "no-store" });
-      if (!r.ok) throw new Error("status " + r.status);
+      const j = await fetch(URL_JSON + "?t=" + Date.now(), { cache: "no-store" });
+      if (!j.ok) throw new Error("sem url.json");
+      const app = (await j.json()).url;
+      if (!app) throw new Error("url vazia");
+      const r = await fetch(app + "/health", { cache: "no-store" });
+      if (!r.ok) throw new Error("health " + r.status);
       const d = await r.json();
       state.className = "state online";
       msg.textContent = "🟢 No ar!";
+      enter.href = app;
       enter.style.display = "inline-block";
       hint.textContent = `${d.clips} clips · ${d.sfx} SFX · ${d.canal_notes} notas`;
     } catch (e) {
-      state.className = "state offline";
-      msg.textContent = "🔴 Fora do ar";
-      enter.style.display = "none";
-      hint.textContent = "O PC do MCD está desligado. Manda mensagem pra ele que ele liga e já volta. 😉";
+      offline();
     }
     ts.textContent = new Date().toLocaleTimeString("pt-BR");
   }
